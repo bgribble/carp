@@ -14,6 +14,8 @@ why not just use that? The main thing is that I am interested in
 doing it using Python's asyncio framework and want to build it
 from the ground up that way.
 
+NOT COMPLETE OR READY FOR USE YET -- STILL ACTIVELY DEVELOPING
+
 ### carp.channel
 
 carp.channel.Channel is a message-oriented API for sending and receiving
