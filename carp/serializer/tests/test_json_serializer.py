@@ -3,10 +3,11 @@ from unittest import TestCase
 
 from carp.serializer import JsonSerializer
 
-pretty = b"""{
+pretty = b"""json:{
     "a": 1,
     "b": 2,
-    "c": "hello"
+    "c": "hello",
+    "__type__": "dict"
 }"""
 
 class TestJsonSerializer(TestCase):
@@ -19,7 +20,7 @@ class TestJsonSerializer(TestCase):
         serialized = js.serialize(dict(a=1, b=2, c="hello"))
         self.assertEqual(
             serialized,
-            b'{"a": 1, "b": 2, "c": "hello"}'
+            b'json:{"a": 1, "b": 2, "c": "hello", "__type__": "dict"}'
         )
 
     def test_serialize__pretty(self):
@@ -40,11 +41,11 @@ class TestJsonSerializer(TestCase):
         js = JsonSerializer()
         self.assertEqual(
             js.serialize(dict(ts=now)),
-            f'{{"ts": {{"__datetime__": true, "value": "{now.isoformat()}"}}}}'.encode('utf-8')
+            f'json:{{"ts": {{"__datetime__": true, "value": "{now.isoformat()}"}}, "__type__": "dict"}}'.encode('utf-8')
         )
         self.assertEqual(
             js.serialize(dict(ts=now.date())),
-            f'{{"ts": {{"__date__": true, "value": "{now.date().isoformat()}"}}}}'.encode('utf-8')
+            f'json:{{"ts": {{"__date__": true, "value": "{now.date().isoformat()}"}}, "__type__": "dict"}}'.encode('utf-8')
         )
 
     def test_deserialize__basic(self):
