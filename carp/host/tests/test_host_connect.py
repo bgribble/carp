@@ -2,7 +2,7 @@ import unittest
 import asyncio
 import tempfile
 from carp.channel import UnixSocketChannel
-from carp.host import Host
+from carp.host.host import Host, HostAnnounce
 from carp.serializer import Serializer
 
 from unittest import IsolatedAsyncioTestCase
@@ -37,6 +37,9 @@ class TestHostConnect(IsolatedAsyncioTestCase):
         await server_conn.wait()
         await client_conn.wait()
 
+        await client_host.stop()
+        await server_host.stop()
+
     async def test_message(self):
         """
         A pair of hosts, one in server mode, can make a connection
@@ -44,10 +47,9 @@ class TestHostConnect(IsolatedAsyncioTestCase):
         """
         message_recvd = asyncio.Event()
         messages = []
-
         async def message(msg):
-            message_recvd.set()
             messages.append(msg)
+            message_recvd.set()
 
         server_channel = UnixSocketChannel(socket_path=self.sockname)
         server_host = Host(on_message=message)
@@ -57,8 +59,12 @@ class TestHostConnect(IsolatedAsyncioTestCase):
 
         await server_host.start(server_channel)
         await client_host.connect(client_channel)
+
         message = 'hello, world'
         client_channel.put(Serializer.serialize(message))
         await message_recvd.wait()
-        self.assertEqual(messages, [message])
+        await client_host.stop()
+        await server_host.stop()
 
+        self.assertTrue(isinstance(messages[0], HostAnnounce))
+        self.assertEqual(messages[1:], [message])
