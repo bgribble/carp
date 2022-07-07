@@ -30,16 +30,18 @@ class CallData(Serializable):
 
 
 class CallResponse(Serializable):
-    def __init__(self, *, call_id, service_name, host_id, value):
+    def __init__(self, *, call_id, service_name, host_id, value, exception):
         self.call_id = call_id
         self.service_name = service_name
         self.host_id = host_id
         self.value = value
+        self.exception = exception
 
     def to_dict(self):
         return dict(
             call_id=self.call_id,
             service_name=self.service_name,
             host_id=self.host_id,
-            value=self.value
+            value=self.value,
+            exception=self.exception,
         )

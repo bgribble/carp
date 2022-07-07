@@ -1,1 +1,1 @@
-from .host import Host
+from .host import Host, RemoteExecutionError

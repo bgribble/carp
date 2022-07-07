@@ -8,6 +8,8 @@ from carp.service import Service, CallData, CallResponse
 from carp.channel import Channel
 from carp.serializer import Serializer, Serializable
 
+class RemoteExecutionError(Exception):
+    pass
 
 class HostAnnounce(Serializable):
     def __init__(self, *, host_id):
@@ -116,12 +118,20 @@ class Host:
                 self.services_event.set()
             elif isinstance(message, CallData):
                 service = self.services_local.get(message.service_name)
-                call_return = await service(*message.args, **message.kwargs)
+                call_return = None
+                exception = None
+
+                try:
+                    call_return = await service(*message.args, **message.kwargs)
+                except Exception as e:
+                    exception = type(e).__name__
+
                 response = CallResponse(
                     call_id=message.call_id,
                     service_name=service.name,
                     host_id=message.host_id,
-                    value=call_return
+                    value=call_return,
+                    exception=exception,
                 )
                 channel.put(response.serialize())
             elif isinstance(message, CallResponse):
@@ -189,6 +199,9 @@ class Host:
         channel.put(call_data.serialize())
         await call_data.event.wait()
         del self.calls_active[call_data.call_id]
+        if call_data.response.exception:
+            raise RemoteExecutionError(call_data.response.exception)
+
         return call_data.response.value
 
     async def handle(self, service, data):

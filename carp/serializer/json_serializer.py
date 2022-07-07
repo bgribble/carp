@@ -7,13 +7,13 @@ from .serializable import Serializable
 
 
 class CarpJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
+    def default(self, obj): 
         from .serializable import Serializable
         if isinstance(obj, datetime.datetime):
             return dict(__datetime__=True, value=obj.isoformat())
-        if isinstance(obj, datetime.date):
+        elif isinstance(obj, datetime.date):
             return dict(__date__=True, value=obj.isoformat())
-        if isinstance(obj, Serializable):
+        elif isinstance(obj, Serializable):
             return dict(__serializable__=True, value=obj.serialize())
         return json.JSONEncoder.default(self, obj)
 
@@ -21,9 +21,9 @@ class CarpJSONEncoder(json.JSONEncoder):
 def decode_hook(obj):
     if isinstance(obj, dict) and "__datetime__" in obj:
         return parser.isoparse(obj["value"])
-    if isinstance(obj, dict) and "__date__" in obj:
+    elif isinstance(obj, dict) and "__date__" in obj:
         return parser.isoparse(obj["value"]).date()
-    if isinstance(obj, dict) and "__serializable__" in obj:
+    elif isinstance(obj, dict) and "__serializable__" in obj:
         return Serializer.deserialize(obj["value"])
     return obj
 

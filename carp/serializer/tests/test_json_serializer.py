@@ -48,6 +48,17 @@ class TestJsonSerializer(TestCase):
             f'json:{{"ts": {{"__date__": true, "value": "{now.date().isoformat()}"}}, "__type__": "dict"}}'.encode('utf-8')
         )
 
+    def test_serialize__tuple(self):
+        """
+        JSON serializer works for tuple
+        """
+        js = JsonSerializer()
+        serialized = js.serialize(dict(a=(1, 2, 3)))
+        self.assertEqual(
+            serialized,
+            b'json:{"a": [1, 2, 3], "__type__": "dict"}'
+        )
+
     def test_deserialize__basic(self):
         """
         JSON deserializer works for basic object
