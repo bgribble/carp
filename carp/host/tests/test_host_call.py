@@ -33,10 +33,8 @@ class TestHostCall(IsolatedAsyncioTestCase):
             func_called.set()
             return True
 
-        clnt_svc = ApiFunction(svc_func)
-
-        await self.client_host.export(clnt_svc)
-        await self.client_host.use(clnt_svc)
+        await self.client_host.export(svc_func)
+        clnt_svc = await self.client_host.require(svc_func)
 
         result = await clnt_svc()
 
@@ -52,11 +50,8 @@ class TestHostCall(IsolatedAsyncioTestCase):
             func_called.set()
             return True
 
-        server_svc = ApiFunction(svc_func)
-        client_svc = ApiFunction(svc_func)
-
-        await self.client_host.export(client_svc)
-        await self.server_host.use(server_svc)
+        await self.client_host.export(svc_func)
+        server_svc = await self.server_host.require(svc_func)
 
         result = await server_svc()
         self.assertEqual(result, True)
@@ -71,11 +66,8 @@ class TestHostCall(IsolatedAsyncioTestCase):
             func_called.set()
             return True
 
-        server_svc = ApiFunction(svc_func)
-        client_svc = ApiFunction(svc_func)
-
-        await self.server_host.export(server_svc)
-        await self.client_host.use(client_svc)
+        await self.server_host.export(svc_func)
+        client_svc = await self.client_host.require(svc_func)
 
         result = await client_svc()
         self.assertEqual(result, True)
@@ -90,11 +82,8 @@ class TestHostCall(IsolatedAsyncioTestCase):
             func_called.set()
             return [arg1, arg2]
 
-        server_svc = ApiFunction(svc_func)
-        client_svc = ApiFunction(svc_func)
-
-        await self.server_host.export(server_svc)
-        await self.client_host.use(client_svc)
+        await self.server_host.export(svc_func)
+        client_svc = await self.client_host.require(svc_func)
 
         test_values = [
             [12, 34],
@@ -117,11 +106,8 @@ class TestHostCall(IsolatedAsyncioTestCase):
             func_called.set()
             raise ValueError
 
-        server_svc = ApiFunction(svc_func)
-        client_svc = ApiFunction(svc_func)
-
-        await self.server_host.export(server_svc)
-        await self.client_host.use(client_svc)
+        await self.server_host.export(svc_func)
+        client_svc = await self.client_host.require(svc_func)
 
         with self.assertRaises(RemoteExecutionError):
             await client_svc()

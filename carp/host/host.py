@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from uuid import uuid4
 
-from carp.service import Service, CallData, CallResponse
+from carp.service import ApiFunction, Service, CallData, CallResponse
 from carp.channel import Channel
 from carp.serializer import Serializer, Serializable
 
@@ -151,22 +151,27 @@ class Host:
             else:
                 asyncio.create_task(_process(message_bytes))
 
-    async def export(self, service: Service):
+    async def export(self, service_impl):
         """
         Announce that a service is available on this host
         """
+        service = ApiFunction(service_impl)
+
         self.services_local[service.name] = service
         service.is_remote = False
         service.host = self
         service.host_id = self.id
         self._report_services()
         self.services_event.set()
+        return service
 
-    async def use(self, service: Service):
+    async def require(self, service_impl):
         """
         Use a service announced by this or another host, waiting
         until it is available
         """
+        service = ApiFunction(service_impl)
+
         while (
             service.name not in self.services_local
             and service.name not in self.services_remote
@@ -181,6 +186,7 @@ class Host:
         elif service.name in self.services_remote:
             service.host_id = random.choice(self.services_remote[service.name])
             service.is_remote = True
+        return service
 
     async def call(self, service, *args, **kwargs):
         """

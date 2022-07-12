@@ -31,10 +31,8 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
             func_called.set()
             return True
 
-        clnt_svc = ApiFunction(svc_func)
-
-        await client_host.export(clnt_svc)
-        await server_host.use(clnt_svc)
+        await client_host.export(svc_func)
+        clnt_svc = await server_host.require(svc_func)
 
         self.assertIn(clnt_svc.name, client_host.services_local)
         self.assertIn(clnt_svc.name, server_host.services_remote)
@@ -64,11 +62,8 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
             func_called.set()
             return True
 
-        clnt_svc = ApiFunction(svc_func)
-
-        await server_host.export(clnt_svc)
-
-        await client_host.use(clnt_svc)
+        await server_host.export(svc_func)
+        clnt_svc = await client_host.require(svc_func)
 
         self.assertIn(clnt_svc.name, server_host.services_local)
         self.assertIn(clnt_svc.name, client_host.services_remote)
