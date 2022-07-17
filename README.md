@@ -19,7 +19,7 @@ NOT COMPLETE OR READY FOR USE YET -- STILL ACTIVELY DEVELOPING
 ### carp.channel
 
 carp.channel.Channel is a message-oriented API for sending and receiving
-data. Subclasses implement the API for 
+data. Subclasses implement the API for different channel types: 
 
 * Unix-domain sockets (carp.channel.UnixSocketChannel)
 * Inet sockets (carp.channel.InetSocketChannel)
@@ -27,16 +27,20 @@ data. Subclasses implement the API for
 
 ### carp.serializer
 
-carp.serializer.Serializable is a mixin that implements message
-conversion to and from byte array. The default serializer uses
-JSON, and requires the implementation of a `to_dict()` and a
-`from_dict()` method for the class. Serializers can be different
-per-class; the serialized reperesentation is tagged.
+Data to be sent over a `channel` must be serialized. The goal
+here is to support efficient serializers like protobuf or msgpack
+but fall back to good old JSON.
+
+Serialized messages are tagged with the serializer name to assist
+with deserialization.
+
+`Serializable` is a mixin class which allows the `serialize` and
+`deserialize` methods to be overridden.  
 
 ### carp.service
 
 carp.service contains helper classes and decorators for defining
-RPC services in user code 
+RPC services in user code.
 
 * carp.service.APIClass -- base class for class-oriented APIs
 * carp.service.apimethod -- method decorator for published
@@ -47,8 +51,13 @@ RPC services in user code
 
 ### carp.host 
 
-carp.host contains classes for managing client and server ends of
-an RPC connection. 
+carp.host includes the Host type, which is the main interface
+object for carp and operates the main message processing loop.
+There is one Host instance per RPC node. Host has key methods
+including:
 
-
+* `export(service)` to announce a RPC service is available
+* `use(service)` to use a service exported by another node
+* `call(service, *args, **kwargs)` to marshal arguments for an
+  RPC call, send them, and await a response
 
