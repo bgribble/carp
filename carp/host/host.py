@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import random
 from collections import defaultdict
 
@@ -118,21 +119,7 @@ class Host:
                 self.services_event.set()
             elif isinstance(message, CallData):
                 service = self.services_local.get(message.service_name)
-                call_return = None
-                exception = None
-
-                try:
-                    call_return = await service(*message.args, **message.kwargs)
-                except Exception as e:
-                    exception = type(e).__name__
-
-                response = CallResponse(
-                    call_id=message.call_id,
-                    service_name=service.name,
-                    host_id=message.host_id,
-                    value=call_return,
-                    exception=exception,
-                )
+                response = await self.handle(service, message)
                 channel.put(response.serialize())
             elif isinstance(message, CallResponse):
                 call_data = self.calls_active.get(message.call_id)
@@ -155,7 +142,11 @@ class Host:
         """
         Announce that a service is available on this host
         """
-        service = ApiFunction(service_impl)
+        api_factory = ApiFunction
+        if hasattr(service_impl, '_service_type'):
+            api_factory = service_impl._service_type
+
+        service = api_factory(service_impl)
 
         self.services_local[service.name] = service
         service.is_remote = False
@@ -170,7 +161,11 @@ class Host:
         Use a service announced by this or another host, waiting
         until it is available
         """
-        service = ApiFunction(service_impl)
+        api_factory = ApiFunction
+        if hasattr(service_impl, '_service_type'):
+            api_factory = service_impl._service_type
+
+        service = api_factory(service_impl)
 
         while (
             service.name not in self.services_local
@@ -210,7 +205,29 @@ class Host:
 
         return call_data.response.value
 
-    async def handle(self, service, data):
+    async def handle(self, service, message):
         """
-        Handle a remote request
+        Handle a remote request using a local service
         """
+        call_return = None
+        exception = None
+
+        try:
+            raw_return = service(*message.args, **message.kwargs)
+            if inspect.isawaitable(raw_return):
+                call_return = await raw_return
+            else:
+                call_return = raw_return
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            exception = type(e).__name__
+        
+        return CallResponse(
+            call_id=message.call_id,
+            service_name=service.name,
+            host_id=message.host_id,
+            value=call_return,
+            exception=exception,
+        )

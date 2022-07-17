@@ -1,19 +1,23 @@
 
 from .service import Service
 
-def apifunc(func):
+def apifunc(func: callable) -> callable:
     """
     Decorator for standalone API functions
     """
-    return ApiFunction(func)
-    
+    func._service_type = ApiFunction
+    func._service_name = func.__name__
+    return func
 
 
 class ApiFunction(Service):
     def __init__(self, func: callable):
         self.func = func
         self.host = None
-        super().__init__(func.__name__)
+        name = func.__name__
+        if hasattr(func, '_service_name'):
+            name = func._service_name
+        super().__init__(name)
 
     async def __call__(self, *args, **kwargs):
         if self.is_remote:
