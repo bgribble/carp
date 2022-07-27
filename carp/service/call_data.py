@@ -5,7 +5,7 @@ from carp.serializer import Serializable
 class CallData(Serializable):
     call_counter = 0
 
-    def __init__(self, *, call_id=None, service_name, host_id, args, kwargs):
+    def __init__(self, *, call_id=None, instance_id=None, service_name, host_id, args, kwargs):
         if call_id is None:
             self.call_id = CallData.call_counter
             CallData.call_counter += 1
@@ -14,6 +14,7 @@ class CallData(Serializable):
 
         self.service_name = service_name
         self.host_id = host_id
+        self.instance_id = instance_id
         self.args = args
         self.kwargs = kwargs
         self.event = asyncio.Event()
@@ -23,6 +24,7 @@ class CallData(Serializable):
         return dict(
             call_id=self.call_id,
             host_id=self.host_id,
+            instance_id=self.instance_id,
             service_name=self.service_name,
             args=self.args,
             kwargs=self.kwargs,

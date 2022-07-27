@@ -5,7 +5,7 @@ from collections import defaultdict
 
 from uuid import uuid4
 
-from carp.service import ApiFunction, Service, CallData, CallResponse
+from carp.service import ApiFunction, ApiMethod, ApiNonInstanceMethod, Service, CallData, CallResponse
 from carp.channel import Channel
 from carp.serializer import Serializer, Serializable
 
@@ -118,7 +118,9 @@ class Host:
                         self.services_remote[service].append(message.host_id)
                 self.services_event.set()
             elif isinstance(message, CallData):
-                service = self.services_local.get(message.service_name)
+                service = self.services_local.get(message.service_name.split(".")[0])
+                if not service:
+                    raise RemoteExecutionError(f"Service {message.service_name} not found locally on host {self.id}")
                 response = await self.handle(service, message)
                 channel.put(response.serialize())
             elif isinstance(message, CallResponse):
@@ -192,6 +194,7 @@ class Host:
         call_data = CallData(
             service_name=service.name,
             host_id=service.host_id,
+            instance_id=service.instance_id,
             args=args,
             kwargs=kwargs
         )
@@ -202,7 +205,6 @@ class Host:
         del self.calls_active[call_data.call_id]
         if call_data.response.exception:
             raise RemoteExecutionError(call_data.response.exception)
-
         return call_data.response.value
 
     async def handle(self, service, message):
@@ -212,6 +214,17 @@ class Host:
         call_return = None
         exception = None
 
+        if service.name != message.service_name:
+            method_name = message.service_name.split(".", 1)[1]
+            class_service = service
+
+            # FIXME should have a better way of getting the right 
+            # service from the CallData
+            if message.instance_id is not None:
+                service = ApiMethod(class_service, method_name, message.instance_id)
+            else:
+                service = ApiNonInstanceMethod(class_service, method_name)
+
         try:
             raw_return = service(*message.args, **message.kwargs)
             if inspect.isawaitable(raw_return):
@@ -220,8 +233,6 @@ class Host:
                 call_return = raw_return
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
             exception = type(e).__name__
         
         return CallResponse(

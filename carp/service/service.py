@@ -8,6 +8,7 @@ class Service:
         self.name = name
         self.host = None
         self.host_id = None
+        self.instance_id = None
         self.is_remote = False
 
     @staticmethod
