@@ -19,7 +19,6 @@ class TestHostCall(IsolatedAsyncioTestCase):
         await self.server_host.start(self.server_channel)
         await self.client_host.connect(self.client_channel)
 
-
     async def asyncTearDown(self):
         await self.client_host.stop()
         await self.server_host.stop()
@@ -91,7 +90,7 @@ class TestHostCall(IsolatedAsyncioTestCase):
             [[12, 34, 56], [78, 90]],
             [dict(a=1, b=2), dict(c=3, d=4)]
         ]
-        
+
         for v in test_values:
             result = await client_svc(*v)
             self.assertEqual(result, v)

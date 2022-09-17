@@ -218,9 +218,9 @@ class Host:
             method_name = message.service_name.split(".", 1)[1]
             class_service = service
 
-            # FIXME should have a better way of getting the right 
+            # FIXME should have a better way of getting the right
             # service from the CallData
-            if message.instance_id is not None:
+            if message.instance_id:
                 service = ApiMethod(class_service, method_name, message.instance_id)
             else:
                 service = ApiNonInstanceMethod(class_service, method_name)
@@ -233,8 +233,11 @@ class Host:
                 call_return = raw_return
 
         except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print(f"\n{e}")
             exception = type(e).__name__
-        
+
         return CallResponse(
             call_id=message.call_id,
             service_name=service.name,

@@ -15,6 +15,7 @@ class Serializable:
     def serialize(self):
         from .json_serializer import JsonSerializer
         # defaults to JsonSerializer
-        return JsonSerializer().serialize(self)
+        serializer_type = getattr(self, 'serializer', None) or JsonSerializer
+        return serializer_type().serialize(self)
     
 

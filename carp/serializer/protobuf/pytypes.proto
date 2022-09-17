@@ -1,0 +1,32 @@
+
+syntax = "proto3";
+package carp;
+
+message PythonValue {
+    oneof value_types { 
+        string _string = 1;
+        double _double = 2;
+        sint64 _int = 3;
+        bytes _bytes = 4;
+        bytes _serialized = 5;
+        bool _bool = 6;
+        bool _none = 7;
+        PythonArray _array = 8;
+        PythonDict _dict = 9;
+    }
+}
+
+message PythonDictItem {
+    PythonValue key = 1;
+    PythonValue value = 2; 
+}
+
+message PythonDict {
+    repeated PythonDictItem items = 1;
+}
+
+message PythonArray {
+    repeated PythonValue items = 1;
+}
+
+

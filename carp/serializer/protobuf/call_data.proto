@@ -1,0 +1,13 @@
+syntax = "proto3";
+package carp;
+
+import "pytypes.proto";
+
+message CallData {
+    int64 call_id = 1;
+    string host_id = 2;
+    int64 instance_id = 3;
+    string service_name = 4;
+    PythonArray args = 5;
+    PythonDict kwargs = 6;
+};

@@ -1,0 +1,7 @@
+syntax = "proto3";
+package carp;
+
+message Envelope {
+    string content_type = 1;
+    bytes content = 2;
+}

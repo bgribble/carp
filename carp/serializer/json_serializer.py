@@ -33,6 +33,7 @@ class JsonSerializer(Serializer):
 
     def __init__(self, **serialize_options):
         self.serialize_options = serialize_options
+        super().__init__()
 
     def serialize(self, pyobj):
         if isinstance(pyobj, dict):
