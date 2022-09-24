@@ -33,6 +33,9 @@ class CallResponse(Serializable):
     """
     CallResponse is what you get back when the call is complete
     """
+    serializer = ProtobufSerializer
+    protobuf_type = call_data_pb2.CallResponse
+
     def __init__(self, *, call_id, service_name, host_id, value, exception):
         self.call_id = call_id
         self.service_name = service_name

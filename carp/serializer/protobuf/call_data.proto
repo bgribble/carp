@@ -11,3 +11,11 @@ message CallData {
     PythonArray args = 5;
     PythonDict kwargs = 6;
 };
+
+message CallResponse {
+    int64 call_id = 1;
+    string host_id = 2;
+    string service_name = 3;
+    PythonValue value = 4;
+    string exception = 5;
+};

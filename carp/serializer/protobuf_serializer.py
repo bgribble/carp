@@ -80,11 +80,17 @@ class ProtobufSerializer(Serializer):
             field.name: getattr(pyobj, field.name)
             for field in obj_pb.DESCRIPTOR.fields
         }
-
+        pb_fields = {
+            field.name: field
+            for field in obj_pb.DESCRIPTOR.fields
+        }
         obj_typename = type(pyobj).__name__
 
         for key, value in obj_dict.items():
-            if isinstance(value, Serializable):
+            field_desc = pb_fields[key]
+            if field_desc.message_type and field_desc.message_type.name == 'PythonValue':
+                getattr(obj_pb, key).CopyFrom(self._pb2_value(value))
+            elif isinstance(value, Serializable):
                 val_pb = PythonValue()
                 val_pb._serialized = value.serialize()
                 setattr(obj_pb, key, val_pb)

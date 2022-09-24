@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0f\x63\x61ll_data.proto\x12\x04\x63\x61rp\x1a\rpytypes.proto\"\x9a\x01\n\x08\x43\x61llData\x12\x0f\n\x07\x63\x61ll_id\x18\x01 \x01(\x03\x12\x0f\n\x07host_id\x18\x02 \x01(\t\x12\x13\n\x0binstance_id\x18\x03 \x01(\x03\x12\x14\n\x0cservice_name\x18\x04 \x01(\t\x12\x1f\n\x04\x61rgs\x18\x05 \x01(\x0b\x32\x11.carp.PythonArray\x12 \n\x06kwargs\x18\x06 \x01(\x0b\x32\x10.carp.PythonDictb\x06proto3'
+  serialized_pb=b'\n\x0f\x63\x61ll_data.proto\x12\x04\x63\x61rp\x1a\rpytypes.proto\"\x9a\x01\n\x08\x43\x61llData\x12\x0f\n\x07\x63\x61ll_id\x18\x01 \x01(\x03\x12\x0f\n\x07host_id\x18\x02 \x01(\t\x12\x13\n\x0binstance_id\x18\x03 \x01(\x03\x12\x14\n\x0cservice_name\x18\x04 \x01(\t\x12\x1f\n\x04\x61rgs\x18\x05 \x01(\x0b\x32\x11.carp.PythonArray\x12 \n\x06kwargs\x18\x06 \x01(\x0b\x32\x10.carp.PythonDict\"{\n\x0c\x43\x61llResponse\x12\x0f\n\x07\x63\x61ll_id\x18\x01 \x01(\x03\x12\x0f\n\x07host_id\x18\x02 \x01(\t\x12\x14\n\x0cservice_name\x18\x03 \x01(\t\x12 \n\x05value\x18\x04 \x01(\x0b\x32\x11.carp.PythonValue\x12\x11\n\texception\x18\x05 \x01(\tb\x06proto3'
   ,
   dependencies=[pytypes__pb2.DESCRIPTOR,])
 
@@ -93,9 +93,71 @@ _CALLDATA = _descriptor.Descriptor(
   serialized_end=195,
 )
 
+
+_CALLRESPONSE = _descriptor.Descriptor(
+  name='CallResponse',
+  full_name='carp.CallResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='call_id', full_name='carp.CallResponse.call_id', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='host_id', full_name='carp.CallResponse.host_id', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='service_name', full_name='carp.CallResponse.service_name', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='value', full_name='carp.CallResponse.value', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='exception', full_name='carp.CallResponse.exception', index=4,
+      number=5, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=197,
+  serialized_end=320,
+)
+
 _CALLDATA.fields_by_name['args'].message_type = pytypes__pb2._PYTHONARRAY
 _CALLDATA.fields_by_name['kwargs'].message_type = pytypes__pb2._PYTHONDICT
+_CALLRESPONSE.fields_by_name['value'].message_type = pytypes__pb2._PYTHONVALUE
 DESCRIPTOR.message_types_by_name['CallData'] = _CALLDATA
+DESCRIPTOR.message_types_by_name['CallResponse'] = _CALLRESPONSE
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 CallData = _reflection.GeneratedProtocolMessageType('CallData', (_message.Message,), {
@@ -104,6 +166,13 @@ CallData = _reflection.GeneratedProtocolMessageType('CallData', (_message.Messag
   # @@protoc_insertion_point(class_scope:carp.CallData)
   })
 _sym_db.RegisterMessage(CallData)
+
+CallResponse = _reflection.GeneratedProtocolMessageType('CallResponse', (_message.Message,), {
+  'DESCRIPTOR' : _CALLRESPONSE,
+  '__module__' : 'call_data_pb2'
+  # @@protoc_insertion_point(class_scope:carp.CallResponse)
+  })
+_sym_db.RegisterMessage(CallResponse)
 
 
 # @@protoc_insertion_point(module_scope)
