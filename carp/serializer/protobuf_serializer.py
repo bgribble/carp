@@ -25,12 +25,12 @@ class ProtobufSerializer(Serializer):
             pb._string = val
         elif isinstance(val, bytes):
             pb._bytes = val
+        elif isinstance(val, bool):
+            pb._bool = val
         elif isinstance(val, int):
             pb._int = val
         elif isinstance(val, float):
             pb._double = val
-        elif isinstance(val, bool):
-            pb._bool = val
         elif isinstance(val, type(None)):
             pb._none = True
         elif isinstance(val, dict):
@@ -66,6 +66,8 @@ class ProtobufSerializer(Serializer):
                 return self._python_value(pb_val._array)
             elif py_type == "_dict":
                 return self._python_value(pb_val._dict)
+            elif py_type == "_bool":
+                return bool(getattr(pb_val, py_type))
             elif py_type == "_none":
                 return None
             elif py_type:
@@ -100,7 +102,7 @@ class ProtobufSerializer(Serializer):
                 dict_pb = getattr(obj_pb, key)
                 for dkey, dval in value.items():
                     ditem = dict_pb.items.add(
-                        key=self._pb2_value(key),
+                        key=self._pb2_value(dkey),
                         value=self._pb2_value(dval)
                     )
             elif isinstance(value, (list, tuple)):

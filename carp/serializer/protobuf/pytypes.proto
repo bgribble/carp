@@ -29,4 +29,14 @@ message PythonArray {
     repeated PythonValue items = 1;
 }
 
+message PythonValueContainer {
+    PythonValue value = 1;
+}
 
+message PythonArrayContainer {
+    PythonArray value = 1;
+}
+
+message PythonDictContainer {
+    PythonDict value = 1;
+}
