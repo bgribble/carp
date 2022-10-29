@@ -1,7 +1,7 @@
 CARP -- modular asyncio RPC subsystem
 
 `carp` started with an RPC system I built for
-[`mfp`](https://github.com/bgribble/mfp), a real-time thub pureaudio
+[`mfp`](https://github.com/bgribble/mfp), a real-time audio
 environment inspired by MAX/MSP and
 [PureData](https://github.com/pure-data/pure-data). I was writing in
 GIL-constrained Python and needed to be able to take advantage of
