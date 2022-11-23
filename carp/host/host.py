@@ -1,16 +1,24 @@
 import asyncio
+from collections import defaultdict
 import inspect
 import random
-from collections import defaultdict
 
 from uuid import uuid4
 
-from carp.service import ApiFunction, ApiMethod, ApiNonInstanceMethod, Service, CallData, CallResponse
-from carp.channel import Channel
+from carp.service import (
+    ApiFunction,
+    ApiMethod,
+    ApiNonInstanceMethod,
+    CallData,
+    CallResponse,
+)
+from carp.channel import Channel, ChannelError
 from carp.serializer import Serializer, Serializable
+
 
 class RemoteExecutionError(Exception):
     pass
+
 
 class HostAnnounce(Serializable):
     def __init__(self, *, host_id):
@@ -24,15 +32,17 @@ class HostAnnounce(Serializable):
 
 
 class HostExports(Serializable):
-    def __init__(self, *, host_id, exports):
+    def __init__(self, *, host_id, exports, metadata):
         self.host_id = host_id
         self.exports = exports
+        self.metadata = metadata
         super().__init__()
 
     def to_dict(self):
         return dict(
             host_id=self.host_id,
-            exports=self.exports
+            exports=self.exports,
+            metadata=self.metadata,
         )
 
 
@@ -40,8 +50,12 @@ class Host:
     STOPPED = "stopped"
     STARTED = "started"
 
-    def __init__(self, *, on_accept=None, on_connect=None, on_message=None):
+    def __init__(
+        self, *,
+        label=None,
+    ):
         self.id = str(uuid4())
+        self.label = label or self.id
 
         self.services_remote = defaultdict(list)
         self.services_local = {}
@@ -51,17 +65,26 @@ class Host:
         self.listen_channel = None
         self.tasks = []
         self.status = Host.STOPPED
-        self.on_accept = on_accept
-        self.on_connect = on_connect
-        self.on_message = on_message
 
-    def _report_services(self):
+        # callbacks
+        self.event_handlers = defaultdict(list)
+
+    async def _report_services(self):
         host_map = HostExports(
             host_id=self.id,
-            exports=list(self.services_local.keys())
+            exports=list(self.services_local.keys()),
+            metadata={
+                service_name: service.metadata
+                for service_name, service in self.services_local.items()
+            }
         ).serialize()
         for channel in self.hosts_remote.values():
-            channel.put(host_map)
+            await channel.put(host_map)
+
+    async def _set_status(self, new_status, **kwargs):
+        old_status = self.status
+        self.status = new_status
+        await self.emit("status", old_status, new_status, **kwargs)
 
     async def start(self, channel: Channel):
         """
@@ -69,13 +92,12 @@ class Host:
         Channel
         """
         self.listen_channel = channel
-        self.status = Host.STARTED
         listener = asyncio.create_task(channel.serve(on_connect=self.accept))
         self.tasks.append(listener)
         await listener
+        await self._set_status(Host.STARTED)
 
     async def stop(self):
-        self.status = Host.STOPPED
         to_cancel = self.tasks
         self.tasks = []
         for t in to_cancel:
@@ -84,45 +106,46 @@ class Host:
                 await t
             except asyncio.CancelledError:
                 pass
+        await self._set_status(Host.STOPPED)
 
     async def accept(self, channel):
-        if self.on_accept:
-            await self.on_accept(channel)
+        await self.emit("accept", channel)
 
-        channel.put(HostAnnounce(host_id=self.id).serialize())
+        await channel.put(HostAnnounce(host_id=self.id).serialize())
         self.tasks.append(asyncio.create_task(self._message_loop(channel)))
 
     async def connect(self, channel):
-        self.status = Host.STARTED
+        await self._set_status(Host.STARTED)
         await channel.connect()
-        if self.on_connect:
-            await self.on_connect(channel)
+        await self.emit("connect", channel)
 
-        channel.put(HostAnnounce(host_id=self.id).serialize())
+        await channel.put(HostAnnounce(host_id=self.id).serialize())
         self.tasks.append(asyncio.create_task(self._message_loop(channel)))
 
     async def _message_loop(self, channel):
         async def _process(bdata):
             message = Serializer.deserialize(bdata)
 
-            if self.on_message:
-                await self.on_message(message)
+            await self.emit("message", message)
 
             # process broadcasts by peers
             if isinstance(message, HostAnnounce):
                 self.hosts_remote[message.host_id] = channel
-                self._report_services()
+                await self._report_services()
             elif isinstance(message, HostExports):
                 for service in message.exports:
                     if message.host_id not in self.services_remote[service]:
                         self.services_remote[service].append(message.host_id)
+                await self.emit("exports", message.host_id, message.exports, message.metadata)
                 self.services_event.set()
             elif isinstance(message, CallData):
                 service = self.services_local.get(message.service_name.split(".")[0])
                 if not service:
-                    raise RemoteExecutionError(f"Service {message.service_name} not found locally on host {self.id}")
+                    raise RemoteExecutionError(
+                        f"Service {message.service_name} not found locally on host {self.id}"
+                    )
                 response = await self.handle(service, message)
-                channel.put(response.serialize())
+                await channel.put(response.serialize())
             elif isinstance(message, CallResponse):
                 call_data = self.calls_active.get(message.call_id)
                 call_data.response = message
@@ -133,14 +156,19 @@ class Host:
             self.status == Host.STARTED
             and channel.status == Channel.CONNECTED
         ):
-            message_bytes = await channel.get()
-            if first_message:
-                await _process(message_bytes)
-                first_message = False
-            else:
-                asyncio.create_task(_process(message_bytes))
+            try:
+                message_bytes = await channel.get()
+                if first_message:
+                    await _process(message_bytes)
+                    first_message = False
+                else:
+                    asyncio.create_task(_process(message_bytes))
+            except ChannelError as e:
+                for host_id, remote_channel in self.hosts_remote.items():
+                    if remote_channel == channel:
+                        await self.emit("disconnect", host_id)
 
-    async def export(self, service_impl):
+    async def export(self, service_impl, metadata=None):
         """
         Announce that a service is available on this host
         """
@@ -149,12 +177,14 @@ class Host:
             api_factory = service_impl._service_type
 
         service = api_factory(service_impl)
+        if metadata:
+            service.metadata = metadata
 
         self.services_local[service.name] = service
         service.is_remote = False
         service.host = self
         service.host_id = self.id
-        self._report_services()
+        await self._report_services()
         self.services_event.set()
         return service
 
@@ -200,7 +230,7 @@ class Host:
         )
         channel = self.hosts_remote[service.host_id]
         self.calls_active[call_data.call_id] = call_data
-        channel.put(call_data.serialize())
+        await channel.put(call_data.serialize())
         await call_data.event.wait()
         del self.calls_active[call_data.call_id]
         if call_data.response.exception:
@@ -245,3 +275,17 @@ class Host:
             value=call_return,
             exception=exception,
         )
+
+    def on(self, event_name, handler, uninstall=False):
+        prev = self.event_handlers[event_name]
+        if not uninstall:
+            prev.append(handler)
+        else:
+            self.event_handlers[event_name] = filter(lambda h: h != handler, prev)
+
+    async def emit(self, event_name, *args, **kwargs):
+        handlers = self.event_handlers[event_name]
+        for handler in handlers:
+            handled = await handler(event_name, *args, **kwargs)
+            if handled:
+                break

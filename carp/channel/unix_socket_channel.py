@@ -1,14 +1,9 @@
 import asyncio
+from asyncio import IncompleteReadError
+
 from carp.channel.channel import Channel
+from carp.channel.exceptions import ConnectionStatusError, ChannelError
 
-class IncompleteReadError (Exception):
-    pass
-
-class ConnectionStatusError(Exception):
-    pass
-
-class SyncError(Exception):
-    pass
 
 class UnixSocketChannel(Channel):
     SYNC_MAGIC = b"[ SYNC ]"
@@ -48,14 +43,19 @@ class UnixSocketChannel(Channel):
             else:
                 on_connect(connected)
         self.status = Channel.SERVING
-        server = await asyncio.start_unix_server(_connected_cb, path=self.socket_path)
+        self.server = await asyncio.start_unix_server(_connected_cb, path=self.socket_path)
 
-    def put(self, message: bytes):
+    async def put(self, message: bytes):
         if self.status != Channel.CONNECTED:
             raise ConnectionStatusError
-        self.writer.write(self.SYNC_MAGIC)
-        self.writer.write(b"% 8d" % len(message))
-        self.writer.write(message)
+        try:
+            self.writer.write(self.SYNC_MAGIC)
+            self.writer.write(b"% 8d" % len(message))
+            self.writer.write(message)
+            await self.writer.drain()
+        except Exception as e:
+            self.status = Channel.CLOSED
+            raise ConnectionError("Connection closed during write")
 
     async def get(self):
         magiclen = len(self.SYNC_MAGIC)
@@ -64,7 +64,7 @@ class UnixSocketChannel(Channel):
         try:
             syncblock = await self.reader.readexactly(magiclen + 8)
             while msglength is None:
-                if badlength or syncblock[:magiclen] != self.SYNC_MAGIC: 
+                if badlength or syncblock[:magiclen] != self.SYNC_MAGIC:
                     syncblock = syncblock[1:] + await self.reader.readexactly(1)
                     badlength = False
                     continue
@@ -78,8 +78,10 @@ class UnixSocketChannel(Channel):
                     badlength = True
                     msglength = None
 
+            return await self.reader.readexactly(msglength)
 
         except IncompleteReadError as e:
-            raise SyncError("Interrupted waiting for sync magic")
+            self.status = Channel.CLOSED
+            raise ChannelError("Connection closed during read")
 
-        return await self.reader.readexactly(msglength)
+

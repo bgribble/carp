@@ -10,6 +10,7 @@ class Service:
         self.host_id = None
         self.instance_id = None
         self.is_remote = False
+        self.metadata = {}
 
     @staticmethod
     def build(impl_object):

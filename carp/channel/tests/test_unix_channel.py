@@ -47,7 +47,7 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
 
         await server.serve(on_connect=on_connect)
         await client.connect()
-        client.put(b"test message")
+        await client.put(b"test message")
         
         await message_recvd.wait()
         self.assertEqual(messages[0], b"test message")
@@ -57,7 +57,7 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
         client can connect and send a message, which is received
         """
         async def on_connect(peer_channel):
-            peer_channel.put(b"test message")
+            await peer_channel.put(b"test message")
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
@@ -72,9 +72,9 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
         client can receive a message despite sync error 
         """
         async def on_connect(peer_channel):
-            peer_channel.put(b"test message 1")
+            await peer_channel.put(b"test message 1")
             peer_channel.writer.write(b"XXX")
-            peer_channel.put(b"test message 2")
+            await peer_channel.put(b"test message 2")
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
@@ -94,7 +94,7 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
         async def on_connect(peer_channel):
             peer_channel.writer.write(peer_channel.SYNC_MAGIC)
             peer_channel.writer.write(b"XXX")
-            peer_channel.put(b"test message")
+            await peer_channel.put(b"test message")
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
@@ -113,7 +113,7 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
             peer_channel.writer.write(peer_channel.SYNC_MAGIC)
             peer_channel.writer.write(b'99999999') 
             peer_channel.writer.write(b'abc' * 100)
-            peer_channel.put(b"test message")
+            await peer_channel.put(b"test message")
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
