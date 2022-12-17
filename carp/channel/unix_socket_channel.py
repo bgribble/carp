@@ -43,7 +43,9 @@ class UnixSocketChannel(Channel):
             else:
                 on_connect(connected)
         self.status = Channel.SERVING
-        self.server = await asyncio.start_unix_server(_connected_cb, path=self.socket_path)
+        self.server = await asyncio.start_unix_server(
+            _connected_cb, path=self.socket_path
+        )
 
     async def put(self, message: bytes):
         if self.status != Channel.CONNECTED:
@@ -53,7 +55,7 @@ class UnixSocketChannel(Channel):
             self.writer.write(b"% 8d" % len(message))
             self.writer.write(message)
             await self.writer.drain()
-        except Exception as e:
+        except Exception:
             self.status = Channel.CLOSED
             raise ConnectionError("Connection closed during write")
 
@@ -80,8 +82,6 @@ class UnixSocketChannel(Channel):
 
             return await self.reader.readexactly(msglength)
 
-        except IncompleteReadError as e:
+        except IncompleteReadError:
             self.status = Channel.CLOSED
             raise ChannelError("Connection closed during read")
-
-

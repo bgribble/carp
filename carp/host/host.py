@@ -136,10 +136,15 @@ class Host:
                 for service in message.exports:
                     if message.host_id not in self.services_remote[service]:
                         self.services_remote[service].append(message.host_id)
-                await self.emit("exports", message.host_id, message.exports, message.metadata)
+                await self.emit(
+                    "exports", message.host_id, message.exports, message.metadata
+                )
                 self.services_event.set()
             elif isinstance(message, CallData):
-                service = self.services_local.get(message.service_name.split(".")[0])
+                await self.emit("call", message)
+                service = self.services_local.get(
+                    message.service_name.split(".")[0]
+                )
                 if not service:
                     raise RemoteExecutionError(
                         f"Service {message.service_name} not found locally on host {self.id}"
@@ -163,7 +168,7 @@ class Host:
                     first_message = False
                 else:
                     asyncio.create_task(_process(message_bytes))
-            except ChannelError as e:
+            except ChannelError:
                 for host_id, remote_channel in self.hosts_remote.items():
                     if remote_channel == channel:
                         await self.emit("disconnect", host_id)
@@ -205,6 +210,7 @@ class Host:
             and self.status == Host.STARTED
         ):
             await self.services_event.wait()
+            self.services_event.clear()
 
         service.host = self
         if service.name in self.services_local:
@@ -213,9 +219,10 @@ class Host:
         elif service.name in self.services_remote:
             service.host_id = random.choice(self.services_remote[service.name])
             service.is_remote = True
+
         return service
 
-    async def call(self, service, *args, **kwargs):
+    async def call(self, service, response=True, *args, **kwargs):
         """
         Send a request to a remote service, waiting for a
         response
@@ -229,13 +236,16 @@ class Host:
             kwargs=kwargs
         )
         channel = self.hosts_remote[service.host_id]
-        self.calls_active[call_data.call_id] = call_data
+        if response:
+            self.calls_active[call_data.call_id] = call_data
         await channel.put(call_data.serialize())
-        await call_data.event.wait()
-        del self.calls_active[call_data.call_id]
-        if call_data.response.exception:
-            raise RemoteExecutionError(call_data.response.exception)
-        return call_data.response.value
+        if response:
+            await call_data.event.wait()
+            del self.calls_active[call_data.call_id]
+            if call_data.response.exception:
+                raise RemoteExecutionError(call_data.response.exception)
+            return call_data.response.value
+        return None
 
     async def handle(self, service, message):
         """

@@ -20,8 +20,10 @@ class ApiFunction(Service):
         super().__init__(name)
 
     async def __call__(self, *args, **kwargs):
+        needs_response = getattr(self.func, "needs_response", True)
+
         if self.is_remote:
-            rv = await self.host.call(self, *args, **kwargs)
+            rv = await self.host.call(self, needs_response, *args, **kwargs)
         else:
             rv = await self.func(*args, **kwargs)
         return rv

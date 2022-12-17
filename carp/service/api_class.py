@@ -3,6 +3,7 @@ from collections import defaultdict
 
 from .service import Service
 
+
 class ApiMethodError(Exception):
     pass
 
@@ -26,14 +27,16 @@ class ApiProxyObject:
         id = object.__getattribute__(self, 'id')
         served_cls = service.served_cls
 
-        try: 
+        try:
             served_meth = getattr(served_cls, name)
             if served_meth and callable(served_meth):
                 return ApiMethod(service, name, id)
         except Exception as e:
             raise ApiMethodError(e)
 
-        raise ValueError("Served class {served_class.__name__} has no method {name}")
+        raise ValueError(
+            "Served class {served_class.__name__} has no method {name}"
+        )
 
 
 class ApiMethod(Service):
@@ -49,16 +52,22 @@ class ApiMethod(Service):
         self.host_id = self.class_service.host_id
 
     async def __call__(self, *args, **kwargs):
+        cls = self.class_service.served_cls
+        method = getattr(cls, self.method_name)
+        needs_response = getattr(method, "needs_response", True)
         if self.is_remote:
-            rv = await self.host.call(self, *args, **kwargs)
+            print(f"[CALL] {self.method_name} {args} {kwargs}")
+            rv = await self.host.call(
+                self, needs_response, *args, **kwargs
+            )
         else:
             cls = self.class_service.served_cls
             instance = ApiClass.instance_map[self.class_service.name].get(self.instance_id)
-            method = getattr(cls, self.method_name)
             rv = method(instance, *args, **kwargs)
             if inspect.isawaitable(rv):
                 rv = await rv
         return rv
+
 
 class ApiNonInstanceMethod(Service):
     def __init__(self, class_service, method_name):
@@ -72,15 +81,20 @@ class ApiNonInstanceMethod(Service):
         self.host_id = self.class_service.host_id
 
     async def __call__(self, *args, **kwargs):
+        cls = self.class_service.served_cls
+        method = getattr(cls, self.method_name)
+        needs_response = getattr(method, "needs_response", True)
+
         if self.is_remote:
-            rv = await self.host.call(self, *args, **kwargs)
+            rv = await self.host.call(
+                self, needs_response, *args, **kwargs
+            )
         else:
-            cls = self.class_service.served_cls
-            method = getattr(cls, self.method_name)
             rv = method(*args, **kwargs)
             if inspect.isawaitable(rv):
                 rv = await rv
         return rv
+
 
 class ApiClass(Service):
     instance_map = defaultdict(dict)
@@ -116,7 +130,7 @@ class ApiClass(Service):
     def __getattr__(self, name):
         served_cls = self.served_cls
 
-        try: 
+        try:
             served_meth = getattr(served_cls, name)
             if served_meth and callable(served_meth):
                 return ApiNonInstanceMethod(self, name)
@@ -124,4 +138,3 @@ class ApiClass(Service):
             raise ApiMethodError(e)
 
         return AttributeError(f"{self.name} has no attribute {name}")
-
