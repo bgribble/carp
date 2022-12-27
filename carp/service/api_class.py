@@ -56,7 +56,6 @@ class ApiMethod(Service):
         method = getattr(cls, self.method_name)
         needs_response = getattr(method, "needs_response", True)
         if self.is_remote:
-            print(f"[CALL] {self.method_name} {args} {kwargs}")
             rv = await self.host.call(
                 self, needs_response, *args, **kwargs
             )

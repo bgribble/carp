@@ -153,8 +153,10 @@ class Host:
                 await channel.put(response.serialize())
             elif isinstance(message, CallResponse):
                 call_data = self.calls_active.get(message.call_id)
-                call_data.response = message
-                call_data.event.set()
+                # FIXME: Should not be returning CallResponses for no response methods
+                if call_data:
+                    call_data.response = message
+                    call_data.event.set()
 
         first_message = True
         while (

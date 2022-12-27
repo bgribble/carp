@@ -1,6 +1,7 @@
 import asyncio
 from carp.serializer import Serializable, ProtobufSerializer
-from carp.serializer.protobuf import call_data_pb2 
+from carp.serializer.protobuf import call_data_pb2
+
 
 class CallData(Serializable):
     """
@@ -12,13 +13,13 @@ class CallData(Serializable):
     serializer = ProtobufSerializer
     protobuf_type = call_data_pb2.CallData
     call_counter = 0
-        
+
     def __init__(self, *, call_id=None, instance_id=None, service_name, host_id, args, kwargs):
         if call_id is None:
             self.call_id = CallData.call_counter
             CallData.call_counter += 1
         else:
-            self.call_id=call_id
+            self.call_id = call_id
 
         self.service_name = service_name
         self.host_id = host_id
