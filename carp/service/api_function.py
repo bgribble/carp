@@ -23,7 +23,7 @@ class ApiFunction(Service):
         needs_response = getattr(self.func, "needs_response", True)
 
         if self.is_remote:
-            rv = await self.host.call(self, needs_response, *args, **kwargs)
+            rv = await self.host.call(self, args, kwargs, response=needs_response)
         else:
             rv = await self.func(*args, **kwargs)
         return rv

@@ -15,10 +15,11 @@ def apiclass(cls):
 
 
 class ApiProxyObject:
-    def __init__(self, service, instance_id):
+    def __init__(self, service, instance_id, sync=False):
         self.service = service
         self.host = service.host
         self.id = instance_id
+        self.sync = sync
 
     def __getattribute__(self, name):
         service = object.__getattribute__(self, 'service')
@@ -51,13 +52,40 @@ class ApiMethod(Service):
         self.host = self.class_service.host
         self.host_id = self.class_service.host_id
 
+    def cb(self, *args, callback, **kwargs):
+        cls = self.class_service.served_cls
+        method = getattr(cls, self.method_name)
+        needs_response = getattr(method, "needs_response", True)
+        if self.is_remote:
+            rv = self.host.call_with_callback(
+                self, args, kwargs,
+                response=needs_response, response_callback=callback
+            )
+        else:
+            raise ApiMethodError("Method with callback can only be invoked remotely")
+
+        return rv
+
+    def sync(self, *args, **kwargs):
+        cls = self.class_service.served_cls
+        method = getattr(cls, self.method_name)
+        needs_response = getattr(method, "needs_response", True)
+        if self.is_remote:
+            rv = self.host.call_blocking(
+                self, args, kwargs, response=needs_response,
+            )
+        else:
+            raise ApiMethodError("Method sync-call can only be invoked remotely")
+
+        return rv
+
     async def __call__(self, *args, **kwargs):
         cls = self.class_service.served_cls
         method = getattr(cls, self.method_name)
         needs_response = getattr(method, "needs_response", True)
         if self.is_remote:
             rv = await self.host.call(
-                self, needs_response, *args, **kwargs
+                self, args, kwargs, response=needs_response,
             )
         else:
             cls = self.class_service.served_cls
@@ -79,6 +107,20 @@ class ApiNonInstanceMethod(Service):
         self.host = self.class_service.host
         self.host_id = self.class_service.host_id
 
+    def sync(self, *args, **kwargs):
+        cls = self.class_service.served_cls
+        method = getattr(cls, self.method_name)
+        needs_response = getattr(method, "needs_response", True)
+
+        if self.is_remote:
+            rv = self.host.call_sync(
+                self, args, kwargs, response=needs_response,
+            )
+        else:
+            rv = method(*args, **kwargs)
+
+        return rv
+
     async def __call__(self, *args, **kwargs):
         cls = self.class_service.served_cls
         method = getattr(cls, self.method_name)
@@ -86,7 +128,7 @@ class ApiNonInstanceMethod(Service):
 
         if self.is_remote:
             rv = await self.host.call(
-                self, needs_response, *args, **kwargs
+                self, args, kwargs, response=needs_response,
             )
         else:
             rv = method(*args, **kwargs)
@@ -101,6 +143,8 @@ class ApiClass(Service):
 
     def __init__(self, served_cls):
         self.served_cls = served_cls
+        self.sync = False
+
         name = self.served_cls.__name__
         if hasattr(served_cls, '_service_name'):
             name = served_cls._service_name
@@ -113,8 +157,8 @@ class ApiClass(Service):
 
         """
         if self.is_remote:
-            instance_id = await self.host.call(self, *args, **kwargs)
-            rv = ApiProxyObject(self, instance_id)
+            instance_id = await self.host.call(self, args, kwargs)
+            rv = ApiProxyObject(self, instance_id, sync=self.sync)
         else:
             instance = self.served_cls(*args, **kwargs)
             if inspect.isawaitable(instance):

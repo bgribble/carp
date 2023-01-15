@@ -27,9 +27,11 @@ class UnixSocketChannel(Channel):
         if self.writer:
             self.writer.close()
             await self.writer.wait_closed()
+            self.writer = None
         if self.server:
             self.server.close()
             await self.server.wait_closed()
+            self.server = None
         self.status = Channel.CLOSED
 
     async def serve(self, *, on_connect):
@@ -55,7 +57,7 @@ class UnixSocketChannel(Channel):
             self.writer.write(b"% 8d" % len(message))
             self.writer.write(message)
             await self.writer.drain()
-        except Exception:
+        except Exception as e:
             self.status = Channel.CLOSED
             raise ConnectionError("Connection closed during write")
 
@@ -82,6 +84,6 @@ class UnixSocketChannel(Channel):
 
             return await self.reader.readexactly(msglength)
 
-        except IncompleteReadError:
+        except IncompleteReadError as e:
             self.status = Channel.CLOSED
             raise ChannelError("Connection closed during read")

@@ -1,3 +1,5 @@
+import threading
+import queue
 import asyncio
 from collections import defaultdict
 import inspect
@@ -65,6 +67,9 @@ class Host:
         self.listen_channel = None
         self.tasks = []
         self.status = Host.STOPPED
+
+        self.event_loop_thread = threading.get_ident()
+        self.event_loop = asyncio.get_event_loop()
 
         # callbacks
         self.event_handlers = defaultdict(list)
@@ -224,7 +229,10 @@ class Host:
 
         return service
 
-    async def call(self, service, response=True, *args, **kwargs):
+    async def call(
+        self, service, args, kwargs, *,
+        response=True, response_queue=None, response_callback=None
+    ):
         """
         Send a request to a remote service, waiting for a
         response
@@ -240,14 +248,65 @@ class Host:
         channel = self.hosts_remote[service.host_id]
         if response:
             self.calls_active[call_data.call_id] = call_data
+
         await channel.put(call_data.serialize())
         if response:
             await call_data.event.wait()
             del self.calls_active[call_data.call_id]
+
             if call_data.response.exception:
                 raise RemoteExecutionError(call_data.response.exception)
+            if response_queue:
+                response_queue.put(call_data.response.value)
+            if response_callback:
+                response_callback(call_data.response.value)
+
             return call_data.response.value
+
+        if response_queue:
+            response_queue.put(None)
         return None
+
+    def call_with_cb(self, service, args, kwargs, *, callback=None):
+        """
+        Non-blocking synchronous call with callback for response
+        """
+
+        current_thread = threading.get_ident()
+        call_wrapper = self.call(
+            service, args, kwargs, response=True, response_callback=callback,
+        )
+
+        if current_thread == self.event_loop_thread:
+            asyncio.create_task(call_wrapper)
+        else:
+            asyncio.run_coroutine_threadsafe(call_wrapper, self.event_loop)
+
+        return None
+
+    def call_blocking(self, service, args, kwargs, response=True):
+        """
+        Synchronous version of call() for bridging to non-async-aware
+        processes
+        """
+        response_queue = None
+        rv = None
+
+        if response:
+            response_queue = queue.Queue(1)
+        current_thread = threading.get_ident()
+        call_wrapper = self.call(
+            service, args, kwargs, response=response, response_queue=response_queue, 
+        )
+
+        if current_thread == self.event_loop_thread:
+            asyncio.create_task(call_wrapper)
+        else:
+            asyncio.run_coroutine_threadsafe(call_wrapper, self.event_loop)
+
+        if response:
+            rv = response_queue.get()
+        return rv
 
     async def handle(self, service, message):
         """
