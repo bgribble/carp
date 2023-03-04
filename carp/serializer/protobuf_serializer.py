@@ -1,6 +1,6 @@
 from carp.serializer import Serializable, Serializer
-from carp.serializer.protobuf.envelope_pb2 import Envelope
-from carp.serializer.protobuf.pytypes_pb2 import (
+from carp.serializer.protobuf.compiled_python.envelope_pb2 import Envelope
+from carp.serializer.protobuf.compiled_python.pytypes_pb2 import (
     PythonDict,
     PythonArray,
     PythonValue

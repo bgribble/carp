@@ -21,4 +21,4 @@ class Serializer:
         serializer = Serializer.serializers.get(serializer_label.decode())
         if serializer:
             return serializer().deserialize(data)
-        raise ValueError(f"Serializer '{serializer_label} not found")
+        raise ValueError(f"Serializer '{serializer_label}' not found: {bytes.decode('utf-8')}")

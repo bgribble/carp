@@ -11,11 +11,11 @@ def git_version():
     vers = shcall(b"git show --oneline").split('\n')[0].split(' ')[0]
     if not isinstance(vers, str):
         vers = vers.decode()
-    return 'git_' + str(vers.strip())
+    return str(int(vers.strip(), 16))
 
 setup(
     name = 'carp',
-    version = '0.01+' + git_version(),
+    version = '0.01.' + git_version(),
     description = 'Async RPC toolkit',
     packages = ['carp'],
 

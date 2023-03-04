@@ -56,7 +56,7 @@ class Host:
         self, *,
         label=None,
     ):
-        self.id = str(uuid4())
+        self.id = uuid4().hex
         self.label = label or self.id
 
         self.services_remote = defaultdict(list)
@@ -296,7 +296,7 @@ class Host:
             response_queue = queue.Queue(1)
         current_thread = threading.get_ident()
         call_wrapper = self.call(
-            service, args, kwargs, response=response, response_queue=response_queue, 
+            service, args, kwargs, response=response, response_queue=response_queue,
         )
 
         if current_thread == self.event_loop_thread:
@@ -336,6 +336,7 @@ class Host:
         except Exception as e:
             import traceback
             traceback.print_exc()
+            print(f"ERROR: {service} {message}")
             print(f"\n{e}")
             exception = type(e).__name__
 

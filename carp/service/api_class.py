@@ -23,9 +23,13 @@ class ApiProxyObject:
 
     def __getattribute__(self, name):
         service = object.__getattribute__(self, 'service')
+        id = object.__getattribute__(self, 'id')
+
         if name == '_service':
             return service
-        id = object.__getattribute__(self, 'id')
+        if name == '_id':
+            return id
+
         served_cls = service.served_cls
 
         try:
