@@ -17,8 +17,6 @@ main thing is that I am interested in doing it using Python's
 asyncio framework and want to build it from the ground up that
 way. Also I like building my own tools.
 
-NOT COMPLETE OR READY FOR USE YET -- STILL ACTIVELY DEVELOPING
-
 ### carp.channel
 
 carp.channel.Channel is a message-oriented API for sending and receiving
@@ -59,9 +57,3 @@ including:
 * `require(service)` to use a service exported by another node
 * `call(service, *args, **kwargs)` to marshal arguments for an
   RPC call, send them, and await a response
-
-### libcarp
-
-A C library making a subset of the RPC system available to C programs.
-
-
