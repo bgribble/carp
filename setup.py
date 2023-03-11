@@ -24,7 +24,7 @@ setup(
     author = 'Bill Gribble',
     author_email = 'grib@billgribble.com',
     uri = 'https://github.com/bgribble/carp',
-    download_url = 'https://github.com/bgribble/carp/archive/v0_0_1.tar.gz',
+    download_url = 'https://github.com/bgribble/carp/archive/refs/tags/v0.0.1.zip',
     keywords = ['rpc', 'protobuf', 'json'],
     install_requires = [
         "protobuf",
