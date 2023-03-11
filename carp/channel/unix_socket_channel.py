@@ -1,8 +1,8 @@
 import asyncio
 from asyncio import IncompleteReadError
 
-from carp.channel.channel import Channel
-from carp.channel.exceptions import ConnectionStatusError, ChannelError
+from .channel import Channel
+from .exceptions import ConnectionStatusError, ChannelError
 
 
 class UnixSocketChannel(Channel):

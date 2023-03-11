@@ -3,11 +3,10 @@
 # build with 'python ./setup.py install'
 from distutils.core import setup
 
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 setup(
     name = 'carp-rpc',
-    packages = ['carp'],
     version = VERSION,
     license = 'MIT',
     description = 'Async RPC toolkit',
@@ -17,7 +16,7 @@ setup(
     download_url = 'https://github.com/bgribble/carp/archive/refs/tags/v0.0.1.zip',
     keywords = ['rpc', 'protobuf', 'json'],
     install_requires = [
-        "protobuf",
+        "protobuf", "python-dateutil",
     ],
     classifiers = [
         'Development Status :: 3 - Alpha',
