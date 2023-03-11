@@ -1,7 +1,7 @@
 
 
 # build with 'python ./setup.py install'
-from setuptools import setup
+from distutils.core import setup
 
 def shcall(cmdline):
     from subprocess import Popen,PIPE
@@ -13,10 +13,26 @@ def git_version():
         vers = vers.decode()
     return str(int(vers.strip(), 16))
 
-setup(
-    name = 'carp',
-    version = '0.01.' + git_version(),
-    description = 'Async RPC toolkit',
-    packages = ['carp'],
+VERSION = "0.0.1"
 
+setup(
+    name = 'carp-rpc',
+    packages = ['carp'],
+    version = VERSION,
+    license = 'MIT',
+    description = 'Async RPC toolkit',
+    author = 'Bill Gribble',
+    author_email = 'grib@billgribble.com',
+    uri = 'https://github.com/bgribble/carp',
+    download_url = 'https://github.com/bgribble/carp/archive/v0_0_1.tar.gz',
+    keywords = ['rpc', 'protobuf', 'json'],
+    install_requires = [
+        "protobuf",
+    ],
+    classifiers = [
+        'Development Status :: 3 - Alpha',
+        'Intended Audience :: Developers',
+        'Topic :: Software Development :: Libraries :: Python Modules',
+        'License :: OSI Approved :: MIT License',
+    ],
 )

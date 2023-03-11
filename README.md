@@ -1,15 +1,17 @@
-CARP -- modular asyncio RPC subsystem
+CARP -- Async RPC tools
 
 `carp` started with an RPC system I built for
 [`mfp`](https://github.com/bgribble/mfp), a real-time audio
 environment inspired by MAX/MSP and
-[PureData](https://github.com/pure-data/pure-data). I was writing in
-GIL-constrained Python and needed to be able to take advantage of
-multiple cores efficiently. `multiprocessing` was a good starting
-point for ganging up multiple Python runtimes to work on
+[PureData](https://github.com/pure-data/pure-data). I was writing
+in GIL-constrained Python and needed to be able to take advantage
+of multiple cores efficiently. `multiprocessing` was a good
+starting point for ganging up multiple Python runtimes to work on
 different parts of a problem, but it didn't really give much
 guidance about how to communicate between processes in a clean
-way. So an RPC system of some kind was needed.
+way. So an RPC system of some kind was needed. I hacked one
+together and it was fine, but it always annoyed me and I wanted
+something better.
 
 [`tinyrpc`](https://github.com/mbr/tinyrpc) basically does
 everything you could want it to do, so why not just use that? The
@@ -17,14 +19,22 @@ main thing is that I am interested in doing it using Python's
 asyncio framework and want to build it from the ground up that
 way. Also I like building my own tools.
 
+### Status
+
+I am making a release of Carp so I can upload it to PyPi for use
+in my own other packages. It's ready enough for that but not
+complete by any stretch. Only the UNIX socket channel type is
+implemented (that's all I need right now). I would definitely not
+use it for anything beyond a toy right now.
+
 ### carp.channel
 
 carp.channel.Channel is a message-oriented API for sending and receiving
 data. Subclasses implement the API for different channel types:
 
 * Unix-domain sockets (carp.channel.UnixSocketChannel)
-* Inet sockets (carp.channel.InetSocketChannel) [TBD]
-* SysV shared memory segments (carp.channel.ShmChannel) [TBD]
+* [TBD] Inet sockets (carp.channel.InetSocketChannel)
+* [TBD] SysV shared memory segments (carp.channel.ShmChannel)
 
 ### carp.serializer
 
