@@ -13,7 +13,7 @@ setup(
     author = 'Bill Gribble',
     author_email = 'grib@billgribble.com',
     url = 'https://github.com/bgribble/carp',
-    download_url = 'https://github.com/bgribble/carp/archive/refs/tags/v0.0.1.zip',
+    download_url = 'https://github.com/bgribble/carp/archive/refs/tags/v0.0.2.tar.gz',
     keywords = ['rpc', 'protobuf', 'json'],
     install_requires = [
         "protobuf", "python-dateutil",
