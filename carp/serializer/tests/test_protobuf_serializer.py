@@ -1,14 +1,14 @@
-import datetime
 import random
 
 from unittest import TestCase
 
 from carp.serializer import Serializable, Serializer, ProtobufSerializer
-from carp.serializer.protobuf.pytypes_pb2 import (
+from carp.serializer.protobuf.compiled_python.pytypes_pb2 import (
     PythonValueContainer,
     PythonArrayContainer,
     PythonDictContainer
 )
+
 
 class PValue(Serializable):
     serializer = ProtobufSerializer
@@ -17,6 +17,7 @@ class PValue(Serializable):
     def __init__(self, value):
         self.value = value
 
+
 class PArray(Serializable):
     serializer = ProtobufSerializer
     protobuf_type = PythonArrayContainer
@@ -24,12 +25,14 @@ class PArray(Serializable):
     def __init__(self, value):
         self.value = value
 
+
 class PDict(Serializable):
     serializer = ProtobufSerializer
     protobuf_type = PythonDictContainer
 
     def __init__(self, value):
         self.value = value
+
 
 class TestProtobufSerializer(TestCase):
     def test_pyvalue_types(self):
