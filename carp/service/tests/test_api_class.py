@@ -40,6 +40,8 @@ class TestApiClass(IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.client_host.stop()
         await self.server_host.stop()
+        await self.client_channel.close()
+        await self.server_channel.close()
 
     async def test_create_obj(self):
         await self.server_host.export(RemoteObj)

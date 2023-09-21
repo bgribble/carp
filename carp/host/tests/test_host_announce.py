@@ -1,7 +1,6 @@
 import asyncio
 import tempfile
 from carp.channel import UnixSocketChannel
-from carp.service import ApiFunction
 from carp.host import Host
 
 from unittest import IsolatedAsyncioTestCase
@@ -42,6 +41,8 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
         )
         await client_host.stop()
         await server_host.stop()
+        await server_channel.close()
+        await client_channel.close()
 
     async def test_server_export_service(self):
         """
@@ -73,6 +74,5 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
         )
         await client_host.stop()
         await server_host.stop()
-
-
-
+        await server_channel.close()
+        await client_channel.close()

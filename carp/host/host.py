@@ -65,7 +65,8 @@ class Host:
         self.calls_active = {}
         self.hosts_remote = {}
         self.listen_channel = None
-        self.tasks = []
+        self.task_last_id = 0
+        self.tasks = {}
         self.status = Host.STOPPED
 
         self.event_loop_thread = threading.get_ident()
@@ -91,20 +92,48 @@ class Host:
         self.status = new_status
         await self.emit("status", old_status, new_status, **kwargs)
 
+    async def _task_wrapper(self, coro, task_id):
+        rv = None
+        try:
+            rv = await coro
+        except Exception as e:
+            import traceback
+            tbinfo = traceback.format_exc()
+            await self.emit("exception", e, tbinfo)
+        finally:
+            if task_id in self.tasks:
+                del self.tasks[task_id]
+        return rv
+
+    def async_task(self, coro):
+        if inspect.isawaitable(coro):
+            current_thread = threading.get_ident()
+            task_id = self.task_last_id
+            self.task_last_id += 1
+
+            if current_thread == self.event_loop_thread:
+                task = asyncio.create_task(self._task_wrapper(coro, task_id))
+            else:
+                task = asyncio.run_coroutine_threadsafe(
+                    self._task_wrapper(coro, task_id), self.event_loop
+                )
+            self.tasks[task_id] = task
+            return task
+        else:
+            return coro
+
     async def start(self, channel: Channel):
         """
         Start the host, accepting connections on the specified
         Channel
         """
         self.listen_channel = channel
-        listener = asyncio.create_task(channel.serve(on_connect=self.accept))
-        self.tasks.append(listener)
-        await listener
+        await channel.serve(on_connect=self.accept)
         await self._set_status(Host.STARTED)
 
     async def stop(self):
-        to_cancel = self.tasks
-        self.tasks = []
+        to_cancel = self.tasks.values()
+        self.tasks = {}
         for t in to_cancel:
             t.cancel()
             try:
@@ -117,7 +146,8 @@ class Host:
         await self.emit("accept", channel)
 
         await channel.put(HostAnnounce(host_id=self.id).serialize())
-        self.tasks.append(asyncio.create_task(self._message_loop(channel)))
+        await self._message_loop(channel)
+        await channel.close()
 
     async def connect(self, channel):
         await self._set_status(Host.STARTED)
@@ -125,7 +155,7 @@ class Host:
         await self.emit("connect", channel)
 
         await channel.put(HostAnnounce(host_id=self.id).serialize())
-        self.tasks.append(asyncio.create_task(self._message_loop(channel)))
+        self.async_task(self._message_loop(channel))
 
     async def _message_loop(self, channel):
         async def _process(bdata):
@@ -142,7 +172,8 @@ class Host:
                     if message.host_id not in self.services_remote[service]:
                         self.services_remote[service].append(message.host_id)
                 await self.emit(
-                    "exports", message.host_id, message.exports, message.metadata
+                    "exports", message.host_id,
+                    message.exports, message.metadata
                 )
                 self.services_event.set()
             elif isinstance(message, CallData):
@@ -152,13 +183,14 @@ class Host:
                 )
                 if not service:
                     raise RemoteExecutionError(
-                        f"Service {message.service_name} not found locally on host {self.id}"
+                        f"Service {message.service_name} not on {self.id}"
                     )
                 response = await self.handle(service, message)
                 await channel.put(response.serialize())
             elif isinstance(message, CallResponse):
                 call_data = self.calls_active.get(message.call_id)
-                # FIXME: Should not be returning CallResponses for no response methods
+                # FIXME: Should not be returning CallResponses for
+                # no response methods
                 if call_data:
                     call_data.response = message
                     call_data.event.set()
@@ -174,11 +206,13 @@ class Host:
                     await _process(message_bytes)
                     first_message = False
                 else:
-                    asyncio.create_task(_process(message_bytes))
-            except ChannelError:
+                    self.async_task(_process(message_bytes))
+            except Exception as e:
                 for host_id, remote_channel in self.hosts_remote.items():
                     if remote_channel == channel:
                         await self.emit("disconnect", host_id)
+                        break
+        await channel.close()
 
     async def export(self, service_impl, metadata=None):
         """
@@ -271,17 +305,12 @@ class Host:
         """
         Non-blocking synchronous call with callback for response
         """
-
-        current_thread = threading.get_ident()
-        call_wrapper = self.call(
-            service, args, kwargs, response=True, response_callback=callback,
+        self.async_task(
+            self.call(
+                service, args, kwargs, response=True,
+                response_callback=callback,
+            )
         )
-
-        if current_thread == self.event_loop_thread:
-            asyncio.create_task(call_wrapper)
-        else:
-            asyncio.run_coroutine_threadsafe(call_wrapper, self.event_loop)
-
         return None
 
     def call_blocking(self, service, args, kwargs, response=True):
@@ -294,15 +323,13 @@ class Host:
 
         if response:
             response_queue = queue.Queue(1)
-        current_thread = threading.get_ident()
-        call_wrapper = self.call(
-            service, args, kwargs, response=response, response_queue=response_queue,
-        )
 
-        if current_thread == self.event_loop_thread:
-            asyncio.create_task(call_wrapper)
-        else:
-            asyncio.run_coroutine_threadsafe(call_wrapper, self.event_loop)
+        self.async_task(
+            self.call(
+                service, args, kwargs, response=response,
+                response_queue=response_queue,
+            )
+        )
 
         if response:
             rv = response_queue.get()
@@ -322,7 +349,9 @@ class Host:
             # FIXME should have a better way of getting the right
             # service from the CallData
             if message.instance_id:
-                service = ApiMethod(class_service, method_name, message.instance_id)
+                service = ApiMethod(
+                    class_service, method_name, message.instance_id
+                )
             else:
                 service = ApiNonInstanceMethod(class_service, method_name)
 
@@ -335,9 +364,8 @@ class Host:
 
         except Exception as e:
             import traceback
-            traceback.print_exc()
-            print(f"ERROR: {service} {message}")
-            print(f"\n{e}")
+            tbinfo = traceback.format_exc()
+            await self.emit("exception", e, tbinfo)
             exception = type(e).__name__
 
         return CallResponse(
@@ -353,7 +381,9 @@ class Host:
         if not uninstall:
             prev.append(handler)
         else:
-            self.event_handlers[event_name] = filter(lambda h: h != handler, prev)
+            self.event_handlers[event_name] = filter(
+                lambda h: h != handler, prev
+            )
 
     async def emit(self, event_name, *args, **kwargs):
         handlers = self.event_handlers[event_name]
@@ -361,3 +391,9 @@ class Host:
             handled = await handler(event_name, *args, **kwargs)
             if handled:
                 break
+
+    async def wait_for_completion(self):
+        while tasks := self.tasks.values():
+            await asyncio.wait(tasks)
+
+

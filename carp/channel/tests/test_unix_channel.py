@@ -41,6 +41,7 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
         async def on_connect(peer_channel):
             messages.append(await peer_channel.get())
             message_recvd.set()
+            await peer_channel.close()
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
@@ -48,9 +49,12 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
         await server.serve(on_connect=on_connect)
         await client.connect()
         await client.put(b"test message")
-        
+
         await message_recvd.wait()
         self.assertEqual(messages[0], b"test message")
+
+        await server.close()
+        await client.close()
 
     async def test_server_message(self):
         """
@@ -58,68 +62,85 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
         """
         async def on_connect(peer_channel):
             await peer_channel.put(b"test message")
+            await peer_channel.close()
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
 
         await server.serve(on_connect=on_connect)
         await client.connect()
-        message = await client.get() 
+        message = await client.get()
         self.assertEqual(message, b"test message")
+
+        await server.close()
+        await client.close()
 
     async def test_resync(self):
         """
-        client can receive a message despite sync error 
+        client can receive a message despite sync error
         """
         async def on_connect(peer_channel):
             await peer_channel.put(b"test message 1")
             peer_channel.writer.write(b"XXX")
             await peer_channel.put(b"test message 2")
+            await peer_channel.close()
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
 
         await server.serve(on_connect=on_connect)
         await client.connect()
-        
+
         msg_1 = await client.get()
         msg_2 = await client.get()
         self.assertEqual(msg_1, b"test message 1")
         self.assertEqual(msg_2, b"test message 2")
 
+        await server.close()
+        await client.close()
+
     async def test_bad_message_length__not_number(self):
         """
-        client can receive a message despite sync error 
+        client can receive a message despite sync error
         """
         async def on_connect(peer_channel):
             peer_channel.writer.write(peer_channel.SYNC_MAGIC)
             peer_channel.writer.write(b"XXX")
             await peer_channel.put(b"test message")
+            await peer_channel.close()
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
 
         await server.serve(on_connect=on_connect)
         await client.connect()
-        
+
         msg_1 = await client.get()
         self.assertEqual(msg_1, b"test message")
+
+        await server.close()
+        await client.close()
 
     async def test_bad_message_length__too_long(self):
         """
-        client can receive a message despite sync error 
+        client can receive a message despite sync error
         """
         async def on_connect(peer_channel):
             peer_channel.writer.write(peer_channel.SYNC_MAGIC)
-            peer_channel.writer.write(b'99999999') 
+            peer_channel.writer.write(b'99999999')
             peer_channel.writer.write(b'abc' * 100)
             await peer_channel.put(b"test message")
+            await peer_channel.close()
 
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
 
         await server.serve(on_connect=on_connect)
         await client.connect()
-        
+
         msg_1 = await client.get()
         self.assertEqual(msg_1, b"test message")
+
+        await server.close()
+        await client.close()
+

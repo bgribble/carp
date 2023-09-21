@@ -42,6 +42,9 @@ class TestHostConnect(IsolatedAsyncioTestCase):
         await client_host.stop()
         await server_host.stop()
 
+        #await server_channel.close()
+        #await client_channel.close()
+
     async def test_message(self):
         """
         A pair of hosts, one in server mode, can make a connection

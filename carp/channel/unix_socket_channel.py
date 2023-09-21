@@ -24,7 +24,10 @@ class UnixSocketChannel(Channel):
         self.status = Channel.CONNECTED
 
     async def close(self):
+        if self.reader:
+            self.reader = None
         if self.writer:
+            await self.writer.drain()
             self.writer.close()
             await self.writer.wait_closed()
             self.writer = None
@@ -57,7 +60,7 @@ class UnixSocketChannel(Channel):
             self.writer.write(b"% 8d" % len(message))
             self.writer.write(message)
             await self.writer.drain()
-        except Exception as e:
+        except Exception:
             self.status = Channel.CLOSED
             raise ConnectionError("Connection closed during write")
 

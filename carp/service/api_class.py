@@ -56,12 +56,22 @@ class ApiMethod(Service):
         self.host = self.class_service.host
         self.host_id = self.class_service.host_id
 
+    def task(self, *args, **kwargs):
+        if self.is_remote:
+            rv = self.host.call_with_cb(
+                self, args, kwargs,
+            )
+        else:
+            raise ApiMethodError("Method with callback can only be invoked remotely")
+
+        return rv
+
     def cb(self, *args, callback, **kwargs):
         cls = self.class_service.served_cls
         method = getattr(cls, self.method_name)
         needs_response = getattr(method, "needs_response", True)
         if self.is_remote:
-            rv = self.host.call_with_callback(
+            rv = self.host.call_with_cb(
                 self, args, kwargs,
                 response=needs_response, response_callback=callback
             )
