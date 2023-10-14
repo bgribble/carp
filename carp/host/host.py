@@ -388,12 +388,12 @@ class Host:
     async def emit(self, event_name, *args, **kwargs):
         handlers = self.event_handlers[event_name]
         for handler in handlers:
-            handled = await handler(event_name, *args, **kwargs)
+            handled = handler(event_name, *args, **kwargs)
+            if inspect.isawaitable(handled):
+                handled = await handled
             if handled:
                 break
 
     async def wait_for_completion(self):
         while tasks := self.tasks.values():
             await asyncio.wait(tasks)
-
-
