@@ -48,8 +48,11 @@ class HostExports(Serializable):
         )
 
 class HostExitNotify(Serializable):
+    def __init__(self, *, host_id):
+        self.host_id = host_id
+
     def to_dict(self):
-        return {}
+        return dict(host_id=self.host_id)
 
 class Host:
     STOPPED = "stopped"
@@ -171,8 +174,9 @@ class Host:
                 self.hosts_remote[message.host_id] = channel
                 await self._report_services()
             elif isinstance(message, HostExitNotify):
-                # FIXME what needs done here?
-                pass
+                for service, hosts in self.services_remote.items():
+                    if message.host_id in hosts:
+                        hosts.remove(message.host_id)
             elif isinstance(message, HostExports):
                 for service in message.exports:
                     if message.host_id not in self.services_remote[service]:
