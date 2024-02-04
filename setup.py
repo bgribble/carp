@@ -3,7 +3,7 @@
 # build with 'python ./setup.py install'
 from distutils.core import setup
 
-VERSION = "0.0.3"
+VERSION = "0.0.4"
 
 setup(
     name = 'carp-rpc',
@@ -13,7 +13,7 @@ setup(
     author = 'Bill Gribble',
     author_email = 'grib@billgribble.com',
     url = 'https://github.com/bgribble/carp',
-    download_url = 'https://github.com/bgribble/carp/archive/refs/tags/v0.0.3.tar.gz',
+    download_url = 'https://github.com/bgribble/carp/archive/refs/tags/v0.0.4.tar.gz',
     keywords = ['rpc', 'protobuf', 'json'],
     install_requires = [
         "protobuf", "python-dateutil",
