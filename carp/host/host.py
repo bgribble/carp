@@ -170,40 +170,47 @@ class Host:
             await self.emit("message", message)
 
             # process broadcasts by peers
-            if isinstance(message, HostAnnounce):
-                self.hosts_remote[message.host_id] = channel
-                await self._report_services()
-            elif isinstance(message, HostExitNotify):
-                for service, hosts in self.services_remote.items():
-                    if message.host_id in hosts:
-                        hosts.remove(message.host_id)
-            elif isinstance(message, HostExports):
-                for service in message.exports:
-                    if message.host_id not in self.services_remote[service]:
-                        self.services_remote[service].append(message.host_id)
-                await self.emit(
-                    "exports", message.host_id,
-                    message.exports, message.metadata
-                )
-                self.services_event.set()
-            elif isinstance(message, CallData):
-                await self.emit("call", message)
-                service = self.services_local.get(
-                    message.service_name.split(".")[0]
-                )
-                if not service:
-                    raise RemoteExecutionError(
-                        f"Service {message.service_name} not on {self.id}"
+            try:
+                if isinstance(message, HostAnnounce):
+                    self.hosts_remote[message.host_id] = channel
+                    await self._report_services()
+                elif isinstance(message, HostExitNotify):
+                    for service, hosts in self.services_remote.items():
+                        if message.host_id in hosts:
+                            hosts.remove(message.host_id)
+                elif isinstance(message, HostExports):
+                    for service in message.exports:
+                        if message.host_id not in self.services_remote[service]:
+                            self.services_remote[service].append(message.host_id)
+                    await self.emit(
+                        "exports", message.host_id,
+                        message.exports, message.metadata
                     )
-                response = await self.handle(service, message)
-                await channel.put(response.serialize())
-            elif isinstance(message, CallResponse):
-                call_data = self.calls_active.get(message.call_id)
-                # FIXME: Should not be returning CallResponses for
-                # no response methods
-                if call_data:
-                    call_data.response = message
-                    call_data.event.set()
+                    self.services_event.set()
+                elif isinstance(message, CallData):
+                    await self.emit("call", message)
+                    service = self.services_local.get(
+                        message.service_name.split(".")[0]
+                    )
+                    if not service:
+                        raise RemoteExecutionError(
+                            f"Service {message.service_name} not on {self.id}"
+                        )
+                    response = await self.handle(service, message)
+                    await channel.put(response.serialize())
+                elif isinstance(message, CallResponse):
+                    call_data = self.calls_active.get(message.call_id)
+                    # FIXME: Should not be returning CallResponses for
+                    # no response methods
+                    if call_data:
+                        call_data.response = message
+                        call_data.event.set()
+            except Exception as e:
+                for host_id, remote_channel in self.hosts_remote.items():
+                    if remote_channel == channel:
+                        channel.status = Channel.CLOSED
+                        await self.emit("disconnect", host_id)
+                        break
 
         first_message = True
         while (
