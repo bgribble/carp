@@ -14,10 +14,13 @@ class TestUnixSocketChannel(IsolatedAsyncioTestCase):
         """
         A client+server pair can make a connection
         """
+        async def on_connect(channel):
+            await channel.close()
+
         server = UnixSocketChannel(socket_path=self.sockname)
         client = UnixSocketChannel(socket_path=self.sockname)
 
-        await server.serve(on_connect=lambda channel: None)
+        await server.serve(on_connect=on_connect)
 
         self.assertEqual(server.status, Channel.SERVING)
         self.assertEqual(client.status, Channel.CLOSED)

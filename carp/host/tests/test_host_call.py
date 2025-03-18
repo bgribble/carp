@@ -22,8 +22,8 @@ class TestHostCall(IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
         await self.client_host.stop()
         await self.server_host.stop()
-        await self.server_channel.close()
         await self.client_channel.close()
+        await self.server_channel.close()
 
     async def test_call_locally(self):
         """

@@ -13,7 +13,7 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
 
     async def test_client_export_service(self):
         """
-        A pair of hosts, one in server mode, can make a connection
+        Client side of Host<-->Host can export a service
         """
         server_channel = UnixSocketChannel(socket_path=self.sockname)
         server_host = Host()
@@ -24,10 +24,7 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
         await server_host.start(server_channel)
         await client_host.connect(client_channel)
 
-        func_called = asyncio.Event()
-
         async def svc_func():
-            func_called.set()
             return True
 
         await client_host.export(svc_func)
@@ -41,12 +38,12 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
         )
         await client_host.stop()
         await server_host.stop()
-        await server_channel.close()
         await client_channel.close()
+        await server_channel.close()
 
     async def test_server_export_service(self):
         """
-        A pair of hosts, one in server mode, can make a connection
+        Server side of Host<-->Host can export a service
         """
         server_channel = UnixSocketChannel(socket_path=self.sockname)
         server_host = Host()
@@ -57,10 +54,7 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
         await server_host.start(server_channel)
         await client_host.connect(client_channel)
 
-        func_called = asyncio.Event()
-
         async def svc_func():
-            func_called.set()
             return True
 
         await server_host.export(svc_func)
@@ -74,5 +68,5 @@ class TestHostAnnounce(IsolatedAsyncioTestCase):
         )
         await client_host.stop()
         await server_host.stop()
-        await server_channel.close()
         await client_channel.close()
+        await server_channel.close()
