@@ -27,6 +27,16 @@ complete by any stretch. Only the UNIX socket channel type is
 implemented (that's all I need right now). I would definitely not
 use it for anything beyond a toy right now.
 
+### Usage
+
+See the tests under each subdirectory for basic usage.
+
+To run the tests,
+
+```
+python3 -m unittest discover
+```
+
 ### carp.channel
 
 carp.channel.Channel is a message-oriented API for sending and receiving

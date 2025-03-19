@@ -36,7 +36,7 @@ class TestJsonSerializer(TestCase):
         """
         JSON serializer works for datetime objects
         """
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now()
 
         js = JsonSerializer()
         self.assertEqual(

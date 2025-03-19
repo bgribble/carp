@@ -98,9 +98,12 @@ class ApiMethod(Service):
         method = getattr(cls, self.method_name)
         needs_response = getattr(method, "needs_response", True)
         if self.is_remote:
-            rv = await self.host.call(
-                self, args, kwargs, response=needs_response,
-            )
+            try:
+                rv = await self.host.call(
+                    self, args, kwargs, response=needs_response,
+                )
+            except Exception as e:
+                raise
         else:
             cls = self.class_service.served_cls
             instance = ApiClass.instance_map[self.class_service.name].get(self.instance_id)

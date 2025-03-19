@@ -41,9 +41,8 @@ class TestHostConnect(IsolatedAsyncioTestCase):
 
         await client_host.stop()
         await server_host.stop()
-
-        #await server_channel.close()
-        #await client_channel.close()
+        await client_channel.close()
+        await server_channel.close()
 
     async def test_message(self):
         """
@@ -71,6 +70,8 @@ class TestHostConnect(IsolatedAsyncioTestCase):
         await message_recvd.wait()
         await client_host.stop()
         await server_host.stop()
+        await client_channel.close()
+        await server_channel.close()
 
         self.assertTrue(isinstance(messages[0], HostAnnounce))
         self.assertEqual(messages[1:], [message])

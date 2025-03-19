@@ -24,18 +24,29 @@ class UnixSocketChannel(Channel):
         self.status = Channel.CONNECTED
 
     async def close(self):
-        if self.reader:
+        """
+        if self.status == Channel.CLOSED:
             self.reader = None
-        if self.writer:
-            await self.writer.drain()
-            self.writer.close()
-            await self.writer.wait_closed()
             self.writer = None
+            self.server = None
+            return
+        """
+
+        self.status = Channel.CLOSED
         if self.server:
             self.server.close()
             await self.server.wait_closed()
             self.server = None
-        self.status = Channel.CLOSED
+        if self.reader:
+            self.reader = None
+        if self.writer:
+            try:
+                await self.writer.drain()
+            except ConnectionResetError:
+                pass
+            self.writer.close()
+            await self.writer.wait_closed()
+            self.writer = None
 
     async def serve(self, *, on_connect):
         async def _connected_cb(reader, writer):
@@ -47,6 +58,7 @@ class UnixSocketChannel(Channel):
                 await on_connect(connected)
             else:
                 on_connect(connected)
+
         self.status = Channel.SERVING
         self.server = await asyncio.start_unix_server(
             _connected_cb, path=self.socket_path
@@ -54,14 +66,13 @@ class UnixSocketChannel(Channel):
 
     async def put(self, message: bytes):
         if self.status != Channel.CONNECTED:
-            raise ConnectionStatusError
+            raise ConnectionStatusError(f"status: {self.status}")
         try:
             self.writer.write(self.SYNC_MAGIC)
             self.writer.write(b"% 8d" % len(message))
             self.writer.write(message)
             await self.writer.drain()
         except Exception:
-            self.status = Channel.CLOSED
             raise ConnectionError("Connection closed during write")
 
     async def get(self):
@@ -88,5 +99,4 @@ class UnixSocketChannel(Channel):
             return await self.reader.readexactly(msglength)
 
         except IncompleteReadError as e:
-            self.status = Channel.CLOSED
             raise ChannelError("Connection closed during read")

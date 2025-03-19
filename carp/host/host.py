@@ -47,12 +47,14 @@ class HostExports(Serializable):
             metadata=self.metadata,
         )
 
+
 class HostExitNotify(Serializable):
     def __init__(self, *, host_id):
         self.host_id = host_id
 
     def to_dict(self):
         return dict(host_id=self.host_id)
+
 
 class Host:
     STOPPED = "stopped"
@@ -141,19 +143,21 @@ class Host:
         to_cancel = self.tasks.values()
         self.tasks = {}
         for t in to_cancel:
+            if t.done() and t.exception() is not None:
+                await self.emit("exception", t.exception(), None)
             t.cancel()
             try:
                 await t
             except asyncio.CancelledError:
                 pass
+            except:
+                await self.emit("exception", t.exception(), None)
         await self._set_status(Host.STOPPED)
 
     async def accept(self, channel):
         await self.emit("accept", channel)
-
         await channel.put(HostAnnounce(host_id=self.id).serialize())
         await self._message_loop(channel)
-        await channel.close()
 
     async def connect(self, channel):
         await self._set_status(Host.STARTED)
@@ -169,7 +173,6 @@ class Host:
 
             await self.emit("message", message)
 
-            # process broadcasts by peers
             try:
                 if isinstance(message, HostAnnounce):
                     self.hosts_remote[message.host_id] = channel
@@ -206,11 +209,26 @@ class Host:
                         call_data.response = message
                         call_data.event.set()
             except Exception as e:
-                for host_id, remote_channel in self.hosts_remote.items():
+                to_close = []
+                for host_id in list(self.hosts_remote.keys()):
+                    remote_channel = self.hosts_remote[host_id]
                     if remote_channel == channel:
-                        channel.status = Channel.CLOSED
-                        await self.emit("disconnect", host_id)
-                        break
+                        to_close.append((host_id, remote_channel))
+
+                for host_id, remote_channel in to_close:
+                    del self.hosts_remote[host_id]
+                    for service_name in list(self.services_remote.keys()):
+                        providers = self.services_remote[service_name]
+                        if providers and host_id in providers:
+                            new_prov = [
+                                p for p in providers if p != host_id
+                            ]
+                            if new_prov:
+                                self.services_remote[service_name] = new_prov
+                            else:
+                                del self.services_remote[service_name]
+
+                    await self.emit("disconnect", host_id)
 
         first_message = True
         while (
@@ -225,11 +243,26 @@ class Host:
                 else:
                     self.async_task(_process(message_bytes))
             except Exception as e:
-                for host_id, remote_channel in self.hosts_remote.items():
+                to_close = []
+                for host_id in list(self.hosts_remote.keys()):
+                    remote_channel = self.hosts_remote[host_id]
                     if remote_channel == channel:
-                        channel.status = Channel.CLOSED
-                        await self.emit("disconnect", host_id)
-                        break
+                        to_close.append((host_id, remote_channel))
+                        remote_channel.status = Channel.CLOSED
+                for host_id, remote_channel in to_close:
+                    del self.hosts_remote[host_id]
+                    for service_name in list(self.services_remote.keys()):
+                        providers = self.services_remote[service_name]
+                        if providers and host_id in providers:
+                            new_prov = [
+                                p for p in providers if p != host_id
+                            ]
+                            if new_prov:
+                                self.services_remote[service_name] = new_prov
+                            else:
+                                del self.services_remote[service_name]
+                    await self.emit("disconnect", host_id)
+
         await channel.close()
 
     async def export(self, service_impl, metadata=None):
@@ -297,11 +330,13 @@ class Host:
             args=args,
             kwargs=kwargs
         )
-        channel = self.hosts_remote[service.host_id]
+        channel = self.hosts_remote.get(service.host_id)
+
         if response:
             self.calls_active[call_data.call_id] = call_data
 
         await channel.put(call_data.serialize())
+
         if response:
             await call_data.event.wait()
             del self.calls_active[call_data.call_id]
@@ -414,4 +449,7 @@ class Host:
 
     async def wait_for_completion(self):
         while tasks := self.tasks.values():
-            await asyncio.wait(tasks)
+            done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+            for task in done:
+                if task.exception() is not None:
+                    self.emit("exception", task.exception(), None)
