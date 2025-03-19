@@ -31,7 +31,7 @@ use it for anything beyond a toy right now.
 
 See the tests under each subdirectory for basic usage.
 
-To run the tests, 
+To run the tests,
 
 ```
 python3 -m unittest discover
