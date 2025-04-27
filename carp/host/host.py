@@ -201,6 +201,7 @@ class Host:
                         )
                     response = await self.handle(service, message)
                     await channel.put(response.serialize())
+
                 elif isinstance(message, CallResponse):
                     call_data = self.calls_active.get(message.call_id)
                     # FIXME: Should not be returning CallResponses for
@@ -285,7 +286,7 @@ class Host:
         self.services_event.set()
         return service
 
-    async def require(self, service_impl):
+    async def require(self, service_impl, host_id=None):
         """
         Use a service announced by this or another host, waiting
         until it is available
@@ -309,7 +310,9 @@ class Host:
             service.is_remote = False
             service.host_id = self.id
         elif service.name in self.services_remote:
-            service.host_id = random.choice(self.services_remote[service.name])
+            if not host_id:
+                host_id = random.choice(self.services_remote[service.name])
+            service.host_id = host_id
             service.is_remote = True
 
         return service
@@ -335,7 +338,13 @@ class Host:
         if response:
             self.calls_active[call_data.call_id] = call_data
 
-        await channel.put(call_data.serialize())
+        try:
+            await channel.put(call_data.serialize())
+        except Exception as e:
+            import traceback
+            tbinfo = traceback.format_exc()
+            await self.emit("exception", e, tbinfo)
+            exception = type(e).__name__
 
         if response:
             await call_data.event.wait()

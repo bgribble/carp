@@ -17,8 +17,12 @@ class Serializer:
 
     @staticmethod
     def deserialize(bytestr: bytes) -> any:
-        serializer_label, data = bytestr.split(b":", 1)
+        try:
+            serializer_label, data = bytestr.split(b":", 1)
+        except Exception as e:
+            raise ValueError(f"No serializer label in {bytestr.decode('utf-8')}")
+
         serializer = Serializer.serializers.get(serializer_label.decode())
         if serializer:
             return serializer().deserialize(data)
-        raise ValueError(f"Serializer '{serializer_label}' not found: {bytes.decode('utf-8')}")
+        raise ValueError(f"Serializer '{serializer_label}' not found: {bytestr.decode('utf-8')}")
