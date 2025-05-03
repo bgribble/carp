@@ -171,7 +171,11 @@ class Host:
         async def _process(bdata):
             message = Serializer.deserialize(bdata)
 
-            await self.emit("message", message)
+            try:
+                await self.emit("message", message)
+            except ValueError as e:
+                await self.emit("exception", e, None)
+                return
 
             try:
                 if isinstance(message, HostAnnounce):
