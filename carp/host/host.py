@@ -70,6 +70,7 @@ class Host:
         self.services_remote = defaultdict(list)
         self.services_local = {}
         self.services_event = asyncio.Event()
+        self.hosts_errored = set()
         self.calls_active = {}
         self.hosts_remote = {}
         self.listen_channel = None
@@ -338,6 +339,11 @@ class Host:
             kwargs=kwargs
         )
         channel = self.hosts_remote.get(service.host_id)
+        if not channel:
+            if service.host_id not in self.hosts_errored:
+                await self.emit("error", f"Service {service.name} host {service.host_id} disappeared")
+                self.hosts_errored.add(service.host_id)
+            return None
 
         if response:
             self.calls_active[call_data.call_id] = call_data
