@@ -7,8 +7,7 @@ from .serializable import Serializable
 
 
 class CarpJSONEncoder(json.JSONEncoder):
-    def default(self, obj): 
-        from .serializable import Serializable
+    def default(self, obj):
         if isinstance(obj, datetime.datetime):
             return dict(__datetime__=True, value=obj.isoformat())
         elif isinstance(obj, datetime.date):

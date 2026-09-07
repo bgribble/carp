@@ -20,9 +20,12 @@ class Serializer:
         try:
             serializer_label, data = bytestr.split(b":", 1)
         except Exception as e:
-            raise ValueError(f"No serializer label in {bytestr.decode('utf-8')}")
+            raise ValueError(f"No serializer label in data packet {bytestr}")
 
         serializer = Serializer.serializers.get(serializer_label.decode())
         if serializer:
-            return serializer().deserialize(data)
-        raise ValueError(f"Serializer '{serializer_label}' not found: {bytestr.decode('utf-8')}")
+            try:
+                return serializer().deserialize(data)
+            except Exception as e:
+                raise ValueError(f"Exception in deserializer: {e} {bytestr}")
+        raise ValueError(f"Serializer '{serializer_label}' not found: {bytestr}")

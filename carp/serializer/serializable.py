@@ -16,6 +16,9 @@ class Serializable:
         from .json_serializer import JsonSerializer
         # defaults to JsonSerializer
         serializer_type = getattr(self, 'serializer', None) or JsonSerializer
-        return serializer_type().serialize(self)
+        try:
+            return serializer_type().serialize(self)
+        except Exception as e:
+            print(f"[serializable] failed to serialize {self}")
     
 
